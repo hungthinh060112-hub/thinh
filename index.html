@@ -1,0 +1,2401 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mã hóa &amp; Giải mã AES-256 (Tạo mã • Key, Mode &amp; IV • Giải mã)</title>
+    <style>
+        /* =====================================================================
+           BIẾN MÀU & THIẾT LẬP NỀN TẢNG (SLATE TỐI & OCEAN BLUE)
+           ===================================================================== */
+        :root {
+            --bg-page: #0b1120;
+            --bg-card: #131c31;
+            --bg-card-elevated: #19243d;
+            --bg-input: #090f1d;
+            --border-subtle: #24324d;
+            --border-strong: #33466b;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --text-muted: #64748b;
+            --ocean-400: #38bdf8;
+            --ocean-500: #0ea5e9;
+            --ocean-600: #0284c7;
+            --ocean-glow: rgba(14, 165, 233, 0.22);
+            --amber-300: #fcd34d;
+            --amber-400: #fbbf24;
+            --purple-300: #d8b4fe;
+            --purple-400: #c084fc;
+            --emerald-400: #34d399;
+            --emerald-bg: rgba(6, 78, 59, 0.35);
+            --emerald-border: rgba(52, 211, 153, 0.45);
+            --rose-300: #fda4af;
+            --rose-400: #fb7185;
+            --rose-bg: rgba(136, 19, 55, 0.35);
+            --rose-border: rgba(251, 113, 133, 0.45);
+            --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        }
+
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        html, body {
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-page);
+            color: var(--text-primary);
+            font-family: var(--font-sans);
+            line-height: 1.55;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        ::selection {
+            background-color: rgba(56, 189, 248, 0.3);
+            color: #ffffff;
+        }
+
+        /* =====================================================================
+           BỐ CỤC CHÍNH (CONTAINER & HEADER)
+           ===================================================================== */
+        .app-container {
+            width: 100%;
+            max-width: 860px;
+            margin: 0 auto;
+            padding: 20px 14px 48px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+
+        @media (min-width: 640px) {
+            .app-container {
+                padding: 34px 24px 64px;
+                gap: 26px;
+            }
+        }
+
+        .app-header {
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 5px 14px;
+            border-radius: 999px;
+            background-color: var(--bg-card);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            color: var(--ocean-400);
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .pulse-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background-color: var(--ocean-400);
+            box-shadow: 0 0 8px var(--ocean-400);
+        }
+
+        .app-title {
+            margin: 0;
+            font-size: 1.65rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+        }
+
+        @media (min-width: 640px) {
+            .app-title {
+                font-size: 2.05rem;
+            }
+        }
+
+        .app-title span {
+            color: var(--ocean-400);
+        }
+
+        .app-subtitle {
+            margin: 0;
+            max-width: 640px;
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+
+        /* =====================================================================
+           THẺ PHẦN (SECTION CARDS)
+           ===================================================================== */
+        .section-card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-subtle);
+            border-radius: 18px;
+            padding: 18px;
+            box-shadow: 0 14px 34px -12px rgba(2, 6, 23, 0.75);
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        @media (min-width: 640px) {
+            .section-card {
+                padding: 24px;
+                gap: 20px;
+            }
+        }
+
+        .section-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid var(--border-subtle);
+        }
+
+        .section-title-group {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .step-badge {
+            width: 36px;
+            height: 36px;
+            border-radius: 11px;
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.22), rgba(2, 132, 199, 0.12));
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: var(--ocean-400);
+            font-weight: 800;
+            font-size: 0.95rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .section-title {
+            margin: 0;
+            font-size: 1.08rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .section-desc {
+            margin: 2px 0 0;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .meta-pill {
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            color: var(--text-secondary);
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            padding: 4px 10px;
+            border-radius: 8px;
+            white-space: nowrap;
+        }
+
+        /* =====================================================================
+           Ô NHẬP LIỆU (TEXTAREA & INPUT)
+           ===================================================================== */
+        .field-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .field-label-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .field-label {
+            font-size: 0.86rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .field-hint {
+            font-family: var(--font-mono);
+            font-size: 11.5px;
+            color: var(--text-secondary);
+        }
+
+        .text-input, .textarea-input {
+            width: 100%;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-strong);
+            border-radius: 12px;
+            color: #ffffff;
+            padding: 12px 14px;
+            font-size: 0.95rem;
+            font-family: var(--font-sans);
+            outline: none;
+            transition: border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+
+        .textarea-input {
+            resize: vertical;
+            min-height: 74px;
+        }
+
+        .mono-input {
+            font-family: var(--font-mono);
+            font-size: 0.84rem;
+            line-height: 1.5;
+        }
+
+        .text-input:focus, .textarea-input:focus {
+            border-color: var(--ocean-400);
+            box-shadow: 0 0 0 3px var(--ocean-glow);
+        }
+
+        .text-input::placeholder, .textarea-input::placeholder {
+            color: var(--text-muted);
+        }
+
+        /* =====================================================================
+           THANH CÔNG CỤ & NÚT BẤM (BUTTONS & SEGMENTED CONTROLS)
+           ===================================================================== */
+        .toolbar-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .segmented-group {
+            display: inline-flex;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: 11px;
+            padding: 4px;
+            gap: 4px;
+        }
+
+        .segmented-group.full-width {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            width: 100%;
+        }
+
+        .seg-btn {
+            appearance: none;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.83rem;
+            font-weight: 600;
+            padding: 8px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.16s ease;
+            min-height: 38px;
+        }
+
+        .seg-btn:hover {
+            color: #ffffff;
+        }
+
+        .seg-btn.active {
+            background: linear-gradient(135deg, var(--ocean-500), var(--ocean-600));
+            color: #ffffff;
+            border-color: rgba(125, 211, 252, 0.45);
+            box-shadow: 0 4px 12px rgba(14, 165, 233, 0.28);
+        }
+
+        .btn {
+            appearance: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            font-family: var(--font-sans);
+            font-weight: 600;
+            font-size: 0.86rem;
+            padding: 10px 16px;
+            min-height: 40px;
+            border-radius: 11px;
+            border: 1px solid transparent;
+            cursor: pointer;
+            transition: transform 0.1s ease, background-color 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+            user-select: none;
+        }
+
+        .btn:active {
+            transform: scale(0.985);
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--ocean-500), var(--ocean-600));
+            color: #ffffff;
+            border-color: rgba(125, 211, 252, 0.4);
+            box-shadow: 0 6px 18px rgba(14, 165, 233, 0.28);
+        }
+
+        .btn-primary:hover {
+            background: linear-gradient(135deg, var(--ocean-400), var(--ocean-500));
+        }
+
+        .btn-large {
+            width: 100%;
+            padding: 14px 20px;
+            min-height: 50px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            border-radius: 13px;
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-card-elevated);
+            color: var(--text-primary);
+            border-color: var(--border-strong);
+        }
+
+        .btn-secondary:hover {
+            background-color: #223152;
+            border-color: var(--ocean-400);
+        }
+
+        .btn-ocean-outline {
+            background-color: rgba(14, 165, 233, 0.1);
+            color: var(--ocean-400);
+            border-color: rgba(56, 189, 248, 0.42);
+        }
+
+        .btn-ocean-outline:hover {
+            background-color: rgba(14, 165, 233, 0.18);
+            color: #7dd3fc;
+        }
+
+        .btn-ghost-link {
+            background: transparent;
+            border: none;
+            color: var(--ocean-400);
+            font-size: 0.8rem;
+            font-weight: 600;
+            padding: 4px 8px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-ghost-link:hover {
+            background-color: rgba(56, 189, 248, 0.12);
+            text-decoration: underline;
+        }
+
+        .btn-sm {
+            padding: 7px 12px;
+            min-height: 34px;
+            font-size: 0.8rem;
+            border-radius: 9px;
+        }
+
+        .btn-copied {
+            background-color: rgba(6, 78, 59, 0.65) !important;
+            border-color: rgba(52, 211, 153, 0.65) !important;
+            color: #6ee7b7 !important;
+        }
+
+        /* =====================================================================
+           KHUNG KẾT QUẢ CIPHERTEXT NỔI BẬT (PHẦN 1)
+           ===================================================================== */
+        .cipher-spotlight {
+            background: linear-gradient(180deg, rgba(14, 165, 233, 0.11) 0%, rgba(9, 15, 29, 0.95) 100%);
+            border: 1.5px solid rgba(56, 189, 248, 0.5);
+            border-radius: 14px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: inset 0 1px 0 rgba(125, 211, 252, 0.15);
+        }
+
+        .cipher-spotlight-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .cipher-title-wrap {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .cipher-title {
+            font-size: 0.82rem;
+            font-weight: 800;
+            letter-spacing: 0.05em;
+            color: var(--ocean-400);
+            text-transform: uppercase;
+        }
+
+        .code-output-box {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-family: var(--font-mono);
+            font-size: 0.86rem;
+            line-height: 1.55;
+            word-break: break-all;
+            overflow-wrap: anywhere;
+            user-select: all;
+        }
+
+        .cipher-code-text {
+            color: #e0f2fe;
+            font-weight: 500;
+            font-size: 0.92rem;
+        }
+
+        /* =====================================================================
+           3 THẺ THÔNG SỐ TÁCH BIỆT: KEY, MODE, IV (PHẦN 2)
+           ===================================================================== */
+        .param-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .param-card {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: 14px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 11px;
+        }
+
+        .param-card-top {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+        }
+
+        .param-label-area {
+            display: flex;
+            flex-direction: column;
+            gap: 3px;
+        }
+
+        .param-title-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .param-tag {
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .tag-key { color: var(--amber-400); }
+        .tag-mode { color: var(--ocean-400); }
+        .tag-iv { color: var(--purple-400); }
+
+        .param-sub {
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+        }
+
+        .param-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .key-code-text {
+            color: var(--amber-300);
+            background-color: rgba(19, 28, 49, 0.85);
+        }
+
+        .iv-code-text {
+            color: var(--purple-300);
+            background-color: rgba(19, 28, 49, 0.85);
+        }
+
+        .mode-spec-banner {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background-color: rgba(19, 28, 49, 0.85);
+            border: 1px solid var(--border-subtle);
+            border-radius: 10px;
+            padding: 10px 12px;
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .mode-spec-highlight {
+            font-family: var(--font-mono);
+            font-size: 0.78rem;
+            color: var(--ocean-400);
+            font-weight: 600;
+        }
+
+        /* =====================================================================
+           LƯỚI TÙY CHỌN & KẾT QUẢ GIẢI MÃ (PHẦN 3)
+           ===================================================================== */
+        .two-col-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 14px;
+        }
+
+        @media (min-width: 640px) {
+            .two-col-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .decrypt-actions-row {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        @media (min-width: 640px) {
+            .decrypt-actions-row {
+                flex-direction: row;
+            }
+            .decrypt-actions-row .btn-large {
+                flex: 1;
+            }
+        }
+
+        .result-banner {
+            border-radius: 14px;
+            padding: 16px;
+            border: 1.5px solid transparent;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .result-banner.hidden {
+            display: none;
+        }
+
+        .result-banner.success {
+            background-color: var(--emerald-bg);
+            border-color: var(--emerald-border);
+        }
+
+        .result-banner.error {
+            background-color: var(--rose-bg);
+            border-color: var(--rose-border);
+        }
+
+        .result-banner-header {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+        }
+
+        .result-status-title {
+            font-size: 0.8rem;
+            font-weight: 800;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+        }
+
+        .result-banner.success .result-status-title {
+            color: var(--emerald-400);
+        }
+
+        .result-banner.error .result-status-title {
+            color: var(--rose-400);
+        }
+
+        .result-message-text {
+            margin: 0;
+            font-size: 1.02rem;
+            font-weight: 600;
+            color: #ffffff;
+            word-break: break-word;
+            user-select: all;
+        }
+
+        .result-banner.error .result-message-text {
+            font-size: 0.88rem;
+            font-weight: 500;
+            color: var(--rose-300);
+            user-select: text;
+        }
+
+        .inline-error-msg {
+            margin: 0;
+            font-size: 0.8rem;
+            color: var(--rose-400);
+            font-weight: 600;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .icon-svg {
+            width: 16px;
+            height: 16px;
+            flex-shrink: 0;
+        }
+
+        .spin-once {
+            animation: spin360 0.35s ease;
+        }
+
+        @keyframes spin360 {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        /* =====================================================================
+           TAB CHUYỂN ĐỔI VĂN BẢN / HÌNH ẢNH & KHUNG UPLOAD ẢNH
+           ===================================================================== */
+        .mode-tabs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-subtle);
+            border-radius: 13px;
+            padding: 5px;
+        }
+
+        .mode-tab-btn {
+            appearance: none;
+            border: 1px solid transparent;
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            font-weight: 700;
+            padding: 10px 14px;
+            min-height: 42px;
+            border-radius: 9px;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: all 0.18s ease;
+        }
+
+        .mode-tab-btn:hover {
+            color: #ffffff;
+            background-color: rgba(56, 189, 248, 0.08);
+        }
+
+        .mode-tab-btn.active {
+            background: linear-gradient(135deg, rgba(14, 165, 233, 0.25), rgba(16, 185, 129, 0.2));
+            color: #ffffff;
+            border-color: rgba(56, 189, 248, 0.5);
+            box-shadow: 0 4px 14px rgba(14, 165, 233, 0.22);
+        }
+
+        .drop-zone {
+            border: 2px dashed var(--border-strong);
+            border-radius: 14px;
+            background: linear-gradient(180deg, rgba(9, 15, 29, 0.75) 0%, rgba(19, 28, 49, 0.55) 100%);
+            padding: 24px 16px;
+            text-align: center;
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: border-color 0.18s ease, background-color 0.18s ease, transform 0.12s ease;
+        }
+
+        .drop-zone:hover, .drop-zone.drag-over {
+            border-color: var(--ocean-400);
+            background: rgba(14, 165, 233, 0.1);
+        }
+
+        .drop-zone-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: 12px;
+            background-color: rgba(56, 189, 248, 0.14);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            color: var(--ocean-400);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 2px;
+        }
+
+        .drop-zone-title {
+            font-size: 0.94rem;
+            font-weight: 700;
+            color: #ffffff;
+        }
+
+        .drop-zone-sub {
+            font-size: 0.8rem;
+            color: var(--text-secondary);
+        }
+
+        .kbd-chip {
+            display: inline-block;
+            font-family: var(--font-mono);
+            font-size: 0.74rem;
+            font-weight: 700;
+            color: var(--emerald-400);
+            background-color: rgba(16, 185, 129, 0.14);
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            padding: 1px 6px;
+            border-radius: 5px;
+        }
+
+        .image-preview-card {
+            background-color: var(--bg-input);
+            border: 1px solid var(--border-strong);
+            border-radius: 14px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        @media (min-width: 640px) {
+            .image-preview-card {
+                flex-direction: row;
+                align-items: center;
+                justify-content: space-between;
+            }
+        }
+
+        .image-preview-main {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            min-width: 0;
+        }
+
+        .image-thumb {
+            width: 74px;
+            height: 74px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            background-color: #050914;
+            flex-shrink: 0;
+        }
+
+        .image-meta-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            min-width: 0;
+        }
+
+        .image-file-name {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #ffffff;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .image-meta-pills {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .cipher-actions-group {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .truncate-notice {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background-color: rgba(251, 191, 36, 0.12);
+            border: 1px solid rgba(251, 191, 36, 0.38);
+            color: var(--amber-300);
+            border-radius: 9px;
+            padding: 8px 12px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .buffer-loaded-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            background-color: rgba(14, 165, 233, 0.12);
+            border: 1px solid rgba(56, 189, 248, 0.4);
+            color: #bae6fd;
+            border-radius: 10px;
+            padding: 8px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+
+        .decrypted-image-box {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            background-color: rgba(9, 15, 29, 0.75);
+            border: 1px solid rgba(52, 211, 153, 0.35);
+            border-radius: 12px;
+            padding: 14px;
+        }
+
+        .decrypted-image-render {
+            max-width: 100%;
+            max-height: 360px;
+            width: auto;
+            height: auto;
+            border-radius: 10px;
+            border: 1px solid rgba(52, 211, 153, 0.45);
+            box-shadow: 0 10px 26px rgba(0, 0, 0, 0.5);
+            background-color: #050914;
+        }
+
+        .btn-emerald {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: #ffffff;
+            border-color: rgba(110, 231, 183, 0.45);
+            box-shadow: 0 6px 16px rgba(16, 185, 129, 0.25);
+        }
+
+        .btn-emerald:hover {
+            background: linear-gradient(135deg, #34d399, #10b981);
+        }
+    </style>
+</head>
+<body>
+
+    <main class="app-container">
+
+        <!-- TIÊU ĐỀ ỨNG DỤNG -->
+        <header class="app-header">
+            <div class="status-pill">
+                <span class="pulse-dot"></span>
+                <span>Web Crypto API • Tự chứa 100%</span>
+            </div>
+            <h1 class="app-title">Mã hóa &amp; Giải mã <span>AES-256</span></h1>
+            <p class="app-subtitle">
+                Chuẩn mật mã đối xứng 256-bit tách biệt hoàn toàn <strong>Ciphertext</strong>, <strong>Key</strong>, <strong>Mode</strong> và <strong>IV</strong> ngay trên trình duyệt.
+            </p>
+        </header>
+
+        <!-- Cảnh báo nếu môi trường không có Web Crypto API -->
+        <div id="cryptoSupportAlert" class="result-banner error hidden">
+            <div class="result-status-title">Trình duyệt không hỗ trợ Web Crypto API</div>
+            <p class="result-message-text">
+                Vui lòng mở trang này trên trình duyệt hiện đại qua HTTPS hoặc localhost để sử dụng <code>window.crypto.subtle</code>.
+            </p>
+        </div>
+
+        <!-- =====================================================================
+             PHẦN 1: TẠO MÃ (Văn bản gốc hoặc Hình ảnh -> Chuỗi mật mã)
+             ===================================================================== -->
+        <section class="section-card" aria-labelledby="sec1Title">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="step-badge">1</div>
+                    <div>
+                        <h2 id="sec1Title" class="section-title">PHẦN 1: TẠO MÃ</h2>
+                        <p class="section-desc">Văn bản gốc hoặc Hình ảnh nhị phân &rarr; Chuỗi mật mã (Ciphertext)</p>
+                    </div>
+                </div>
+                <span id="plainByteBadge" class="meta-pill">32 bytes UTF-8</span>
+            </div>
+
+            <!-- 2 Tab chuyển đổi mượt mà: Văn bản / Hình ảnh -->
+            <div class="mode-tabs" role="tablist" aria-label="Chọn loại dữ liệu đầu vào">
+                <button type="button" id="tabTextMode" class="mode-tab-btn active" role="tab" aria-selected="true">
+                    <span>📝 Văn bản</span>
+                </button>
+                <button type="button" id="tabImageMode" class="mode-tab-btn" role="tab" aria-selected="false">
+                    <span>🖼️ Hình ảnh</span>
+                </button>
+            </div>
+
+            <!-- PANEL 1A: NHẬP VĂN BẢN -->
+            <div id="textInputPanel" class="field-group">
+                <div class="field-label-row">
+                    <label for="plaintextInput" class="field-label">Văn bản gốc cần mã hóa</label>
+                    <button type="button" id="restoreSampleBtn" class="btn-ghost-link">
+                        Khôi phục câu mẫu
+                    </button>
+                </div>
+                <textarea
+                    id="plaintextInput"
+                    class="textarea-input"
+                    rows="2"
+                    placeholder="Nhập văn bản tiếng Việt có dấu cần mã hóa..."
+                >người con gái anh yêu nhất</textarea>
+            </div>
+
+            <!-- PANEL 1B: CHỌN / KÉO THẢ / DÁN HÌNH ẢNH -->
+            <div id="imageInputPanel" class="field-group hidden">
+                <input type="file" id="imageFileInput" accept="image/*" class="hidden" />
+
+                <div id="imageDropZone" class="drop-zone" tabindex="0" role="button" aria-label="Chọn hoặc kéo thả hình ảnh để mã hóa">
+                    <div class="drop-zone-icon">
+                        <svg class="icon-svg" style="width: 22px; height: 22px;" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                    </div>
+                    <div class="drop-zone-title">Bấm chọn ảnh, kéo thả vào đây hoặc dán ảnh bằng <span class="kbd-chip">Ctrl+V</span></div>
+                    <div class="drop-zone-sub">Hỗ trợ PNG, JPG, WEBP, GIF, BMP... Mã hóa trực tiếp dữ liệu nhị phân gốc</div>
+                </div>
+
+                <!-- Thẻ xem trước ảnh đã nạp -->
+                <div id="imagePreviewCard" class="image-preview-card hidden">
+                    <div class="image-preview-main">
+                        <img id="encImageThumb" class="image-thumb" alt="Ảnh xem trước cần mã hóa" />
+                        <div class="image-meta-list">
+                            <div id="encImageName" class="image-file-name">image.png</div>
+                            <div class="image-meta-pills">
+                                <span id="encImageDimensions" class="meta-pill">0 × 0 px</span>
+                                <span id="encImageSize" class="meta-pill">0 KB</span>
+                                <span id="encImageMime" class="meta-pill">IMAGE</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="param-actions">
+                        <button type="button" id="changeImageBtn" class="btn btn-secondary btn-sm">Đổi ảnh</button>
+                        <button type="button" id="removeImageBtn" class="btn btn-secondary btn-sm">Xóa ảnh</button>
+                    </div>
+                </div>
+            </div>
+
+            <p id="encryptInlineError" class="inline-error-msg hidden"></p>
+
+            <!-- Thanh công cụ chọn định dạng hiển thị & Tạo mã mới -->
+            <div class="toolbar-row">
+                <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span class="field-label" style="font-size: 0.8rem; color: var(--text-secondary);">Định dạng hiển thị:</span>
+                    <div class="segmented-group" role="group" aria-label="Chọn định dạng hiển thị">
+                        <button type="button" id="encFmtBase64Btn" class="seg-btn active" data-enc-fmt="base64">Base64</button>
+                        <button type="button" id="encFmtHexBtn" class="seg-btn" data-enc-fmt="hex">Hex</button>
+                    </div>
+                </div>
+
+                <button type="button" id="generateNewCodeBtn" class="btn btn-primary">
+                    <svg id="regenAllSvg" class="icon-svg" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    <span>Tạo mã mới</span>
+                </button>
+            </div>
+
+            <!-- Khung kết quả nổi bật: CHUỖI MẬT MÃ (CIPHERTEXT) -->
+            <div class="cipher-spotlight">
+                <div class="cipher-spotlight-header">
+                    <div class="cipher-title-wrap">
+                        <span class="cipher-title">CHUỖI MẬT MÃ (CIPHERTEXT)</span>
+                        <span id="cipherSizeBadge" class="meta-pill">48 bytes</span>
+                    </div>
+                    <div class="cipher-actions-group">
+                        <button type="button" id="copyCipherBtn" class="btn btn-ocean-outline btn-sm">
+                            <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                            </svg>
+                            <span>Sao chép mã</span>
+                        </button>
+                        <button type="button" id="downloadCipherTxtBtn" class="btn btn-secondary btn-sm">
+                            <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                            <span>Tải file mã (.txt)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="cipherTruncateNotice" class="truncate-notice hidden">
+                    <span>⚡ Chuỗi mã hóa lớn: Đang hiển thị bản xem trước rút gọn để mượt trình duyệt. Bấm "Sao chép mã", "Tải file mã (.txt)" hoặc "Lấy dữ liệu từ trên xuống" để dùng 100% chuỗi đầy đủ.</span>
+                </div>
+
+                <div id="cipherOutputBox" class="code-output-box cipher-code-text">Đang khởi tạo mã...</div>
+                <div id="cipherNoteText" class="param-sub">
+                    Chuỗi mã hóa thuần túy (không gộp IV ở đầu), tự động cập nhật ngay khi bạn nhập văn bản.
+                </div>
+            </div>
+        </section>
+
+        <!-- =====================================================================
+             PHẦN 2: KEY, MODE VÀ IV
+             ===================================================================== -->
+        <section class="section-card" aria-labelledby="sec2Title">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="step-badge">2</div>
+                    <div>
+                        <h2 id="sec2Title" class="section-title">PHẦN 2: KEY, MODE VÀ IV</h2>
+                        <p class="section-desc">Bộ 3 thông số bắt buộc đi kèm để giải mã chính xác</p>
+                    </div>
+                </div>
+                <span id="activeFormatLabel" class="meta-pill">Đang xuất: Base64</span>
+            </div>
+
+            <div class="param-stack">
+
+                <!-- 1. KEY (Khóa bí mật 256-bit / 32 bytes) -->
+                <div class="param-card">
+                    <div class="param-card-top">
+                        <div class="param-label-area">
+                            <div class="param-title-row">
+                                <span class="param-tag tag-key">1. KEY (Khóa bí mật 256-bit / 32 bytes)</span>
+                                <span id="keySizeBadge" class="meta-pill">32 bytes • 44 ký tự</span>
+                            </div>
+                            <span class="param-sub">Chìa khóa ngẫu nhiên chuẩn mật mã học (CSPRNG)</span>
+                        </div>
+                        <div class="param-actions">
+                            <button type="button" id="changeKeyBtn" class="btn btn-secondary btn-sm">
+                                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 7a2 2 0 012 2m4 0a6 6 0 01-7.743 5.743L11 17H9v2H7v2H4a1 1 0 01-1-1v-2.586a1 1 0 01.293-.707l5.964-5.964A6 6 0 1121 9z" />
+                                </svg>
+                                <span>Đổi Key</span>
+                            </button>
+                            <button type="button" id="copyKeyBtn" class="btn btn-secondary btn-sm" data-copy-el="keyOutputBox">
+                                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                <span>Sao chép Key</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="keyOutputBox" class="code-output-box key-code-text">Đang tạo Key...</div>
+                </div>
+
+                <!-- 2. MODE (Chế độ mã hóa) -->
+                <div class="param-card">
+                    <div class="param-card-top">
+                        <div class="param-label-area">
+                            <div class="param-title-row">
+                                <span class="param-tag tag-mode">2. MODE (Chế độ mã hóa)</span>
+                                <span id="modeActiveBadge" class="meta-pill">AES-256-GCM</span>
+                            </div>
+                            <span class="param-sub">Chuyển đổi trực tiếp giữa GCM (có xác thực) và CBC</span>
+                        </div>
+                        <div class="param-actions">
+                            <button type="button" id="copyModeBtn" class="btn btn-secondary btn-sm">
+                                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                <span>Sao chép Mode</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="segmented-group full-width" role="group" aria-label="Chọn Mode mã hóa">
+                        <button type="button" id="encModeGcmBtn" class="seg-btn active" data-enc-mode="AES-GCM">
+                            AES-256-GCM (Khuyên dùng)
+                        </button>
+                        <button type="button" id="encModeCbcBtn" class="seg-btn" data-enc-mode="AES-CBC">
+                            AES-256-CBC
+                        </button>
+                    </div>
+
+                    <div class="mode-spec-banner">
+                        <span id="modeDescText">Chuẩn xác thực AEAD mạnh nhất, tự phát hiện nếu dữ liệu bị chỉnh sửa.</span>
+                        <span id="modeTechSpec" class="mode-spec-highlight">IV: 12 bytes • Auth Tag: 16 bytes</span>
+                    </div>
+                </div>
+
+                <!-- 3. IV (Initialization Vector / Nonce) -->
+                <div class="param-card">
+                    <div class="param-card-top">
+                        <div class="param-label-area">
+                            <div class="param-title-row">
+                                <span id="ivTagTitle" class="param-tag tag-iv">3. IV (Initialization Vector / Nonce • 12 bytes)</span>
+                                <span id="ivSizeBadge" class="meta-pill">12 bytes • 16 ký tự</span>
+                            </div>
+                            <span id="ivSubDesc" class="param-sub">Vector khởi tạo 96-bit dành cho AES-256-GCM (tách rời khỏi Ciphertext)</span>
+                        </div>
+                        <div class="param-actions">
+                            <button type="button" id="changeIvBtn" class="btn btn-secondary btn-sm">
+                                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                                </svg>
+                                <span>Đổi IV</span>
+                            </button>
+                            <button type="button" id="copyIvBtn" class="btn btn-secondary btn-sm" data-copy-el="ivOutputBox">
+                                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                                </svg>
+                                <span>Sao chép IV</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div id="ivOutputBox" class="code-output-box iv-code-text">Đang tạo IV...</div>
+                </div>
+
+            </div>
+
+            <!-- Nút Sao chép trọn bộ (Mã + Key + Mode + IV) -->
+            <button type="button" id="copyFullBundleBtn" class="btn btn-ocean-outline" style="width: 100%; padding: 13px 16px;">
+                <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                </svg>
+                <span>Sao chép trọn bộ (Mã + Key + Mode + IV)</span>
+            </button>
+        </section>
+
+        <!-- =====================================================================
+             PHẦN 3: GIẢI MÃ
+             ===================================================================== -->
+        <section class="section-card" aria-labelledby="sec3Title">
+            <div class="section-header">
+                <div class="section-title-group">
+                    <div class="step-badge">3</div>
+                    <div>
+                        <h2 id="sec3Title" class="section-title">PHẦN 3: GIẢI MÃ</h2>
+                        <p class="section-desc">Khôi phục Văn bản tiếng Việt hoặc Hình ảnh gốc từ Ciphertext, Key, Mode và IV</p>
+                    </div>
+                </div>
+                <button type="button" id="pullDownBtn" class="btn btn-ocean-outline btn-sm">
+                    <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                    </svg>
+                    <span>⬇️ Lấy dữ liệu từ trên xuống để kiểm tra</span>
+                </button>
+            </div>
+
+            <!-- Ô 1: Dán Chuỗi mật mã (Ciphertext) hoặc Tải file mã (.txt) -->
+            <div class="field-group">
+                <div class="field-label-row">
+                    <label for="decCipherInput" class="field-label" style="color: var(--ocean-400);">
+                        Chuỗi mật mã (Ciphertext)
+                    </label>
+                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                        <input type="file" id="cipherTxtFileInput" accept=".txt,text/plain" class="hidden" />
+                        <button type="button" id="uploadCipherTxtBtn" class="btn btn-secondary btn-sm">
+                            <span>📂 Tải file mã (.txt)</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div id="decLoadedBufferBar" class="buffer-loaded-bar hidden">
+                    <span id="decLoadedBufferText">📎 Đã nạp dữ liệu mật mã đầy đủ từ bộ nhớ</span>
+                    <button type="button" id="clearDecBufferBtn" class="btn-ghost-link" style="color: var(--rose-300);">Gỡ bỏ</button>
+                </div>
+
+                <textarea
+                    id="decCipherInput"
+                    class="textarea-input mono-input"
+                    rows="2"
+                    placeholder="Dán chuỗi mật mã (Ciphertext) tại đây hoặc bấm '📂 Tải file mã (.txt)'..."
+                ></textarea>
+            </div>
+
+            <!-- Ô 2: Dán Key (256-bit) -->
+            <div class="field-group">
+                <div class="field-label-row">
+                    <label for="decKeyInput" class="field-label" style="color: var(--amber-400);">
+                        Key (256-bit / 32 bytes)
+                    </label>
+                    <span id="decKeyHint" class="field-hint">Cần 32 bytes (44 ký tự Base64)</span>
+                </div>
+                <input
+                    type="text"
+                    id="decKeyInput"
+                    class="text-input mono-input"
+                    placeholder="Dán Key bí mật 256-bit tại đây..."
+                />
+            </div>
+
+            <!-- Hàng chọn Mode & Định dạng đầu vào -->
+            <div class="two-col-grid">
+                <div class="field-group">
+                    <span class="field-label">Mode giải mã</span>
+                    <div class="segmented-group full-width" role="group" aria-label="Chọn Mode giải mã">
+                        <button type="button" id="decModeGcmBtn" class="seg-btn active" data-dec-mode="AES-GCM">AES-256-GCM</button>
+                        <button type="button" id="decModeCbcBtn" class="seg-btn" data-dec-mode="AES-CBC">AES-256-CBC</button>
+                    </div>
+                </div>
+
+                <div class="field-group">
+                    <span class="field-label">Định dạng dữ liệu</span>
+                    <div class="segmented-group full-width" role="group" aria-label="Chọn định dạng đầu vào">
+                        <button type="button" id="decFmtBase64Btn" class="seg-btn active" data-dec-fmt="base64">Base64</button>
+                        <button type="button" id="decFmtHexBtn" class="seg-btn" data-dec-fmt="hex">Hex</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ô 3: Dán IV -->
+            <div class="field-group">
+                <div class="field-label-row">
+                    <label for="decIvInput" class="field-label" style="color: var(--purple-400);">
+                        IV (Initialization Vector / Nonce)
+                    </label>
+                    <span id="decIvHint" class="field-hint">Cần 12 bytes (16 ký tự Base64)</span>
+                </div>
+                <input
+                    type="text"
+                    id="decIvInput"
+                    class="text-input mono-input"
+                    placeholder="Dán chuỗi IV tương ứng tại đây..."
+                />
+            </div>
+
+            <!-- Nút hành động lớn GIẢI MÃ NGAY + Xóa -->
+            <div class="decrypt-actions-row">
+                <button type="button" id="decryptNowBtn" class="btn btn-primary btn-large">
+                    <svg class="icon-svg" style="width: 20px; height: 20px;" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M8 11V7a4 4 0 118 0m-4 8v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2z" />
+                    </svg>
+                    <span>🔓 GIẢI MÃ NGAY</span>
+                </button>
+                <button type="button" id="clearDecInputsBtn" class="btn btn-secondary" style="min-height: 50px;">
+                    Xóa ô nhập
+                </button>
+            </div>
+
+            <!-- Khung kết quả giải mã thông minh (Văn bản hoặc Hình ảnh) -->
+            <div id="decryptResultBanner" class="result-banner hidden" role="status" aria-live="polite">
+                <div class="result-banner-header">
+                    <span id="decryptResultStatus" class="result-status-title"></span>
+                    <button type="button" id="copyDecryptedResultBtn" class="btn btn-secondary btn-sm hidden" data-copy-el="decryptResultContent">
+                        <span>Sao chép kết quả</span>
+                    </button>
+                    <button type="button" id="downloadDecryptedImageBtn" class="btn btn-emerald btn-sm hidden">
+                        <span>⬇️ Tải hình ảnh gốc về máy</span>
+                    </button>
+                </div>
+
+                <!-- Kết quả văn bản -->
+                <p id="decryptResultContent" class="result-message-text"></p>
+
+                <!-- Kết quả hình ảnh -->
+                <div id="decryptedImageContainer" class="decrypted-image-box hidden">
+                    <img id="decryptedImagePreview" class="decrypted-image-render" alt="Hình ảnh đã giải mã thành công" />
+                    <div class="image-meta-pills">
+                        <span id="decImgFormatBadge" class="meta-pill">PNG</span>
+                        <span id="decImgDimBadge" class="meta-pill">0 × 0 px</span>
+                        <span id="decImgSizeBadge" class="meta-pill">0 KB</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        /**
+         * Ứng dụng Mã hóa & Giải mã AES-256 (Văn bản & Hình ảnh)
+         * Thuần HTML/CSS/JS tự chứa, dùng Web Crypto API chuẩn của trình duyệt.
+         */
+        (function () {
+            const SAMPLE_TEXT = "người con gái anh yêu nhất";
+            const PREVIEW_CHAR_LIMIT = 12000;
+
+            // Bảng tra cứu Hex nhanh 256 phần tử để xử lý ảnh lớn mượt mà
+            const HEX_LUT = Array.from({ length: 256 }, (_, i) => i.toString(16).padStart(2, "0"));
+
+            // Trạng thái ứng dụng
+            const state = {
+                inputKind: "text",          // "text" | "image"
+                encMode: "AES-GCM",         // "AES-GCM" | "AES-CBC"
+                encFormat: "base64",        // "base64" | "hex"
+                keyBytes: null,             // Uint8Array(32)
+                ivBytes: null,              // Uint8Array(12) cho GCM hoặc Uint8Array(16) cho CBC
+                cipherBytes: null,          // Uint8Array thuần túy (không chứa IV)
+                imageBytes: null,           // Uint8Array gốc của file ảnh
+                imageMeta: null,            // { name, size, width, height, mime, previewUrl }
+                decMode: "AES-GCM",         // "AES-GCM" | "AES-CBC"
+                decFormat: "base64",        // "base64" | "hex"
+                decBufferedCipher: null,    // Chuỗi cipher đầy đủ khi nạp từ file .txt hoặc kéo từ trên xuống
+                decImageDownload: null      // { url, filename }
+            };
+
+            const textEncoder = new TextEncoder();
+            const textDecoder = new TextDecoder("utf-8", { fatal: true });
+
+            // DOM Elements - Phần 1
+            const cryptoSupportAlert = document.getElementById("cryptoSupportAlert");
+            const tabTextMode = document.getElementById("tabTextMode");
+            const tabImageMode = document.getElementById("tabImageMode");
+            const textInputPanel = document.getElementById("textInputPanel");
+            const imageInputPanel = document.getElementById("imageInputPanel");
+            const plaintextInput = document.getElementById("plaintextInput");
+            const plainByteBadge = document.getElementById("plainByteBadge");
+            const restoreSampleBtn = document.getElementById("restoreSampleBtn");
+            const encryptInlineError = document.getElementById("encryptInlineError");
+
+            const imageFileInput = document.getElementById("imageFileInput");
+            const imageDropZone = document.getElementById("imageDropZone");
+            const imagePreviewCard = document.getElementById("imagePreviewCard");
+            const encImageThumb = document.getElementById("encImageThumb");
+            const encImageName = document.getElementById("encImageName");
+            const encImageDimensions = document.getElementById("encImageDimensions");
+            const encImageSize = document.getElementById("encImageSize");
+            const encImageMime = document.getElementById("encImageMime");
+            const changeImageBtn = document.getElementById("changeImageBtn");
+            const removeImageBtn = document.getElementById("removeImageBtn");
+
+            const encFmtBase64Btn = document.getElementById("encFmtBase64Btn");
+            const encFmtHexBtn = document.getElementById("encFmtHexBtn");
+            const generateNewCodeBtn = document.getElementById("generateNewCodeBtn");
+            const regenAllSvg = document.getElementById("regenAllSvg");
+            const cipherSizeBadge = document.getElementById("cipherSizeBadge");
+            const cipherTruncateNotice = document.getElementById("cipherTruncateNotice");
+            const cipherOutputBox = document.getElementById("cipherOutputBox");
+            const cipherNoteText = document.getElementById("cipherNoteText");
+            const copyCipherBtn = document.getElementById("copyCipherBtn");
+            const downloadCipherTxtBtn = document.getElementById("downloadCipherTxtBtn");
+
+            // DOM Elements - Phần 2
+            const activeFormatLabel = document.getElementById("activeFormatLabel");
+            const keySizeBadge = document.getElementById("keySizeBadge");
+            const keyOutputBox = document.getElementById("keyOutputBox");
+            const changeKeyBtn = document.getElementById("changeKeyBtn");
+
+            const modeActiveBadge = document.getElementById("modeActiveBadge");
+            const encModeGcmBtn = document.getElementById("encModeGcmBtn");
+            const encModeCbcBtn = document.getElementById("encModeCbcBtn");
+            const copyModeBtn = document.getElementById("copyModeBtn");
+            const modeDescText = document.getElementById("modeDescText");
+            const modeTechSpec = document.getElementById("modeTechSpec");
+
+            const ivTagTitle = document.getElementById("ivTagTitle");
+            const ivSizeBadge = document.getElementById("ivSizeBadge");
+            const ivSubDesc = document.getElementById("ivSubDesc");
+            const ivOutputBox = document.getElementById("ivOutputBox");
+            const changeIvBtn = document.getElementById("changeIvBtn");
+            const copyFullBundleBtn = document.getElementById("copyFullBundleBtn");
+
+            // DOM Elements - Phần 3
+            const pullDownBtn = document.getElementById("pullDownBtn");
+            const cipherTxtFileInput = document.getElementById("cipherTxtFileInput");
+            const uploadCipherTxtBtn = document.getElementById("uploadCipherTxtBtn");
+            const decLoadedBufferBar = document.getElementById("decLoadedBufferBar");
+            const decLoadedBufferText = document.getElementById("decLoadedBufferText");
+            const clearDecBufferBtn = document.getElementById("clearDecBufferBtn");
+            const decCipherInput = document.getElementById("decCipherInput");
+            const decKeyInput = document.getElementById("decKeyInput");
+            const decKeyHint = document.getElementById("decKeyHint");
+            const decModeGcmBtn = document.getElementById("decModeGcmBtn");
+            const decModeCbcBtn = document.getElementById("decModeCbcBtn");
+            const decFmtBase64Btn = document.getElementById("decFmtBase64Btn");
+            const decFmtHexBtn = document.getElementById("decFmtHexBtn");
+            const decIvInput = document.getElementById("decIvInput");
+            const decIvHint = document.getElementById("decIvHint");
+            const decryptNowBtn = document.getElementById("decryptNowBtn");
+            const clearDecInputsBtn = document.getElementById("clearDecInputsBtn");
+            const decryptResultBanner = document.getElementById("decryptResultBanner");
+            const decryptResultStatus = document.getElementById("decryptResultStatus");
+            const decryptResultContent = document.getElementById("decryptResultContent");
+            const copyDecryptedResultBtn = document.getElementById("copyDecryptedResultBtn");
+            const downloadDecryptedImageBtn = document.getElementById("downloadDecryptedImageBtn");
+            const decryptedImageContainer = document.getElementById("decryptedImageContainer");
+            const decryptedImagePreview = document.getElementById("decryptedImagePreview");
+            const decImgFormatBadge = document.getElementById("decImgFormatBadge");
+            const decImgDimBadge = document.getElementById("decImgDimBadge");
+            const decImgSizeBadge = document.getElementById("decImgSizeBadge");
+
+            // =========================================================================
+            // TIỆN ÍCH ĐỊNH DẠNG DUNG LƯỢNG & NHẬN DIỆN MAGIC BYTES ẢNH
+            // =========================================================================
+
+            function formatBytes(bytes) {
+                if (bytes < 1024) return `${bytes} B`;
+                if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+                return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+            }
+
+            /**
+             * Kiểm tra Magic Bytes ở đầu mảng byte sau giải mã để nhận diện ảnh gốc
+             */
+            function detectImageMagicBytes(bytes) {
+                if (!bytes || bytes.length < 4) return null;
+
+                // PNG: 89 50 4E 47
+                if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4E && bytes[3] === 0x47) {
+                    return { mime: "image/png", ext: "png", label: "PNG" };
+                }
+                // JPEG: FF D8 FF
+                if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+                    return { mime: "image/jpeg", ext: "jpg", label: "JPEG" };
+                }
+                // GIF: 47 49 46 38 (GIF8)
+                if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) {
+                    return { mime: "image/gif", ext: "gif", label: "GIF" };
+                }
+                // WEBP: RIFF....WEBP (52 49 46 46 ... 57 45 42 50)
+                if (
+                    bytes.length >= 12 &&
+                    bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46 &&
+                    bytes[8] === 0x57 && bytes[9] === 0x45 && bytes[10] === 0x42 && bytes[11] === 0x50
+                ) {
+                    return { mime: "image/webp", ext: "webp", label: "WEBP" };
+                }
+                // BMP: 42 4D (BM)
+                if (bytes[0] === 0x42 && bytes[1] === 0x4D) {
+                    return { mime: "image/bmp", ext: "bmp", label: "BMP" };
+                }
+
+                return null;
+            }
+
+            // =========================================================================
+            // CÁC HÀM CHUYỂN ĐỔI BYTES <-> BASE64 / HEX (TỐI ƯU HIỆU NĂNG)
+            // =========================================================================
+
+            function bytesToBase64(bytes) {
+                let binary = "";
+                const chunkSize = 0x8000;
+                for (let i = 0; i < bytes.length; i += chunkSize) {
+                    const chunk = bytes.subarray(i, i + chunkSize);
+                    binary += String.fromCharCode.apply(null, chunk);
+                }
+                return btoa(binary);
+            }
+
+            function base64ToBytes(inputStr) {
+                const normalized = inputStr.trim().replace(/\s+/g, "").replace(/-/g, "+").replace(/_/g, "/");
+                if (!normalized) {
+                    throw new Error("Chuỗi Base64 đang bị trống.");
+                }
+                if (!/^[A-Za-z0-9+/]*={0,2}$/.test(normalized) || normalized.length % 4 !== 0) {
+                    throw new Error("Chuỗi không đúng chuẩn Base64 (sai ký tự hoặc thiếu dấu '=' đệm ở cuối).");
+                }
+                const binary = atob(normalized);
+                const out = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    out[i] = binary.charCodeAt(i);
+                }
+                return out;
+            }
+
+            function bytesToHex(bytes) {
+                const parts = new Array(bytes.length);
+                for (let i = 0; i < bytes.length; i++) {
+                    parts[i] = HEX_LUT[bytes[i]];
+                }
+                return parts.join("");
+            }
+
+            function hexToBytes(inputStr) {
+                const normalized = inputStr.trim().replace(/0x/gi, "").replace(/[:\s-]+/g, "");
+                if (!normalized) {
+                    throw new Error("Chuỗi Hex đang bị trống.");
+                }
+                if (!/^[0-9a-fA-F]+$/.test(normalized)) {
+                    throw new Error("Chuỗi Hex chứa ký tự không hợp lệ (chỉ gồm 0-9 và a-f).");
+                }
+                if (normalized.length % 2 !== 0) {
+                    throw new Error("Độ dài chuỗi Hex phải là số chẵn (2 ký tự cho mỗi byte).");
+                }
+                const out = new Uint8Array(normalized.length / 2);
+                for (let i = 0; i < normalized.length; i += 2) {
+                    out[i / 2] = parseInt(normalized.substring(i, i + 2), 16);
+                }
+                return out;
+            }
+
+            function encodeBytes(bytes, fmt) {
+                if (!bytes) return "";
+                return fmt === "hex" ? bytesToHex(bytes) : bytesToBase64(bytes);
+            }
+
+            function decodeBytes(str, fmt, label) {
+                try {
+                    return fmt === "hex" ? hexToBytes(str) : base64ToBytes(str);
+                } catch (err) {
+                    throw new Error(`Sai định dạng ở ô ${label} (${fmt.toUpperCase()}): ${err.message}`);
+                }
+            }
+
+            // =========================================================================
+            // SAO CHÉP & TẢI FILE AN TOÀN
+            // =========================================================================
+
+            function copyTextWithFeedback(text, buttonEl, successLabel) {
+                if (!text) return;
+
+                const helper = document.createElement("textarea");
+                helper.value = text;
+                helper.setAttribute("readonly", "");
+                helper.style.position = "fixed";
+                helper.style.left = "-9999px";
+                helper.style.top = "0";
+                document.body.appendChild(helper);
+
+                helper.focus();
+                helper.select();
+                helper.setSelectionRange(0, helper.value.length);
+
+                let copied = false;
+                try {
+                    copied = document.execCommand("copy");
+                } catch (e) {
+                    copied = false;
+                }
+                document.body.removeChild(helper);
+
+                if (!copied && navigator.clipboard && navigator.clipboard.writeText) {
+                    navigator.clipboard.writeText(text).catch(() => {});
+                    copied = true;
+                }
+
+                if (copied && buttonEl) {
+                    if (!buttonEl._origHtml) {
+                        buttonEl._origHtml = buttonEl.innerHTML;
+                    }
+                    buttonEl.innerHTML = `
+                        <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                        <span>${successLabel || "Đã sao chép!"}</span>
+                    `;
+                    buttonEl.classList.add("btn-copied");
+
+                    clearTimeout(buttonEl._feedbackTimer);
+                    buttonEl._feedbackTimer = setTimeout(() => {
+                        buttonEl.innerHTML = buttonEl._origHtml;
+                        buttonEl.classList.remove("btn-copied");
+                    }, 1700);
+                }
+            }
+
+            function triggerBlobDownload(blob, filename) {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(url), 4000);
+            }
+
+            // =========================================================================
+            // QUẢN LÝ CHẾ ĐỘ ĐẦU VÀO (VĂN BẢN <-> HÌNH ẢNH) & ĐỌC FILE ẢNH
+            // =========================================================================
+
+            function updateSourceByteBadge() {
+                if (state.inputKind === "text") {
+                    const byteLen = textEncoder.encode(plaintextInput.value).length;
+                    plainByteBadge.textContent = `${byteLen} bytes UTF-8`;
+                } else if (state.imageBytes) {
+                    plainByteBadge.textContent = `${formatBytes(state.imageBytes.length)} (${state.imageBytes.length.toLocaleString("vi-VN")} B)`;
+                } else {
+                    plainByteBadge.textContent = "Chưa chọn ảnh";
+                }
+            }
+
+            function switchInputTab(kind) {
+                state.inputKind = kind;
+                const isText = kind === "text";
+
+                tabTextMode.classList.toggle("active", isText);
+                tabTextMode.setAttribute("aria-selected", String(isText));
+                tabImageMode.classList.toggle("active", !isText);
+                tabImageMode.setAttribute("aria-selected", String(!isText));
+
+                textInputPanel.classList.toggle("hidden", !isText);
+                imageInputPanel.classList.toggle("hidden", isText);
+
+                encryptInlineError.classList.add("hidden");
+                updateSourceByteBadge();
+
+                if (isText) {
+                    if (plaintextInput.value.length > 0) {
+                        performEncryption({ newKey: false, newIv: false });
+                    } else {
+                        state.cipherBytes = null;
+                        cipherTruncateNotice.classList.add("hidden");
+                        cipherOutputBox.textContent = "";
+                        cipherSizeBadge.textContent = "0 bytes";
+                    }
+                } else {
+                    if (state.imageBytes) {
+                        performEncryption({ newKey: false, newIv: false });
+                    } else {
+                        state.cipherBytes = null;
+                        cipherTruncateNotice.classList.add("hidden");
+                        cipherSizeBadge.textContent = "Chờ ảnh";
+                        cipherOutputBox.textContent = "Vui lòng chọn, kéo thả hoặc dán (Ctrl+V) một hình ảnh ở khung phía trên để tạo mã AES-256...";
+                        cipherNoteText.textContent = "Dữ liệu nhị phân gốc của ảnh sẽ được mã hóa chuẩn AES-256 mà không làm thay đổi chất lượng ảnh.";
+                    }
+                }
+            }
+
+            async function handleImageFile(file) {
+                if (!file) return;
+                if (!file.type.startsWith("image/")) {
+                    encryptInlineError.textContent = "File bạn chọn không phải là hình ảnh hợp lệ (vui lòng chọn PNG, JPG, WEBP, GIF, BMP...).";
+                    encryptInlineError.classList.remove("hidden");
+                    return;
+                }
+
+                encryptInlineError.classList.add("hidden");
+
+                try {
+                    const buffer = await file.arrayBuffer();
+                    const bytes = new Uint8Array(buffer);
+
+                    if (state.imageMeta && state.imageMeta.previewUrl) {
+                        URL.revokeObjectURL(state.imageMeta.previewUrl);
+                    }
+
+                    const previewUrl = URL.createObjectURL(file);
+                    const fileName = file.name || `anh-dan-${Date.now()}.png`;
+                    const mimeLabel = (file.type.split("/")[1] || "IMAGE").toUpperCase();
+
+                    state.imageBytes = bytes;
+                    state.imageMeta = {
+                        name: fileName,
+                        size: bytes.length,
+                        width: 0,
+                        height: 0,
+                        mime: file.type,
+                        previewUrl
+                    };
+
+                    // Hiển thị thẻ xem trước ảnh
+                    encImageThumb.src = previewUrl;
+                    encImageName.textContent = fileName;
+                    encImageSize.textContent = formatBytes(bytes.length);
+                    encImageMime.textContent = mimeLabel;
+                    encImageDimensions.textContent = "Đang đo kích thước...";
+                    imagePreviewCard.classList.remove("hidden");
+
+                    encImageThumb.onload = () => {
+                        if (state.imageMeta) {
+                            state.imageMeta.width = encImageThumb.naturalWidth;
+                            state.imageMeta.height = encImageThumb.naturalHeight;
+                            encImageDimensions.textContent = `${encImageThumb.naturalWidth} × ${encImageThumb.naturalHeight} px`;
+                        }
+                    };
+
+                    if (state.inputKind !== "image") {
+                        switchInputTab("image");
+                    } else {
+                        updateSourceByteBadge();
+                        await performEncryption({ newKey: false, newIv: false });
+                    }
+                } catch (err) {
+                    encryptInlineError.textContent = "Không thể đọc file hình ảnh: " + (err.message || "Lỗi không xác định");
+                    encryptInlineError.classList.remove("hidden");
+                }
+            }
+
+            function clearSelectedImage() {
+                if (state.imageMeta && state.imageMeta.previewUrl) {
+                    URL.revokeObjectURL(state.imageMeta.previewUrl);
+                }
+                state.imageBytes = null;
+                state.imageMeta = null;
+                imageFileInput.value = "";
+                imagePreviewCard.classList.add("hidden");
+                if (state.inputKind === "image") {
+                    switchInputTab("image");
+                }
+            }
+
+            // =========================================================================
+            // LOGIC MÃ HÓA & HIỂN THỊ PHẦN 1 + PHẦN 2
+            // =========================================================================
+
+            function requiredIvBytes(mode) {
+                return mode === "AES-GCM" ? 12 : 16;
+            }
+
+            function modeDisplayName(mode) {
+                return mode === "AES-GCM" ? "AES-256-GCM" : "AES-256-CBC";
+            }
+
+            function syncEncryptControls() {
+                const isBase64 = state.encFormat === "base64";
+                const isGcm = state.encMode === "AES-GCM";
+
+                encFmtBase64Btn.classList.toggle("active", isBase64);
+                encFmtHexBtn.classList.toggle("active", !isBase64);
+                activeFormatLabel.textContent = `Đang xuất: ${isBase64 ? "Base64" : "Hex"}`;
+
+                encModeGcmBtn.classList.toggle("active", isGcm);
+                encModeCbcBtn.classList.toggle("active", !isGcm);
+                modeActiveBadge.textContent = modeDisplayName(state.encMode);
+
+                if (isGcm) {
+                    modeDescText.textContent = "Chuẩn xác thực AEAD mạnh nhất, tự phát hiện nếu dữ liệu bị chỉnh sửa.";
+                    modeTechSpec.textContent = "IV: 12 bytes • Auth Tag: 16 bytes";
+                } else {
+                    modeDescText.textContent = "Chế độ mã hóa khối truyền thống dùng vector khởi tạo 128-bit và đệm PKCS#7.";
+                    modeTechSpec.textContent = "IV: 16 bytes • Padding: PKCS#7";
+                }
+            }
+
+            function renderEncryptOutputs() {
+                if (!state.keyBytes || !state.ivBytes) return;
+
+                const isGcm = state.encMode === "AES-GCM";
+                const keyStr = encodeBytes(state.keyBytes, state.encFormat);
+                const ivStr = encodeBytes(state.ivBytes, state.encFormat);
+
+                // Phần 2: Key
+                keyOutputBox.textContent = keyStr;
+                keySizeBadge.textContent = `32 bytes • ${keyStr.length} ký tự`;
+
+                // Phần 2: IV
+                const ivLen = state.ivBytes.length;
+                ivTagTitle.textContent = `3. IV (Initialization Vector / Nonce • ${ivLen} bytes)`;
+                ivSizeBadge.textContent = `${ivLen} bytes • ${ivStr.length} ký tự`;
+                ivSubDesc.textContent = isGcm
+                    ? "Vector khởi tạo 96-bit (12 bytes) dành cho AES-256-GCM"
+                    : "Vector khởi tạo 128-bit (16 bytes) dành cho AES-256-CBC";
+                ivOutputBox.textContent = ivStr;
+
+                // Phần 1: Ciphertext
+                if (!state.cipherBytes) return;
+
+                const fullCipherStr = encodeBytes(state.cipherBytes, state.encFormat);
+                const charCount = fullCipherStr.length;
+
+                if (charCount > PREVIEW_CHAR_LIMIT) {
+                    const head = fullCipherStr.slice(0, 6000);
+                    const tail = fullCipherStr.slice(-2000);
+                    cipherOutputBox.textContent = `${head}\n\n... [Đã rút gọn hiển thị — Tổng cộng ${charCount.toLocaleString("vi-VN")} ký tự] ...\n\n${tail}`;
+                    cipherTruncateNotice.classList.remove("hidden");
+                } else {
+                    cipherOutputBox.textContent = fullCipherStr;
+                    cipherTruncateNotice.classList.add("hidden");
+                }
+
+                cipherSizeBadge.textContent = `${formatBytes(state.cipherBytes.length)} • ${charCount.toLocaleString("vi-VN")} ký tự`;
+
+                const sourceLen = state.inputKind === "image" && state.imageBytes
+                    ? state.imageBytes.length
+                    : textEncoder.encode(plaintextInput.value).length;
+
+                cipherNoteText.textContent = isGcm
+                    ? `Gồm ${sourceLen.toLocaleString("vi-VN")} bytes dữ liệu mã hóa + 16 bytes thẻ xác thực GCM (tách rời hoàn toàn khỏi IV).`
+                    : `Đã đệm PKCS#7 thành ${state.cipherBytes.length.toLocaleString("vi-VN")} bytes (bội số của 16B), tách rời hoàn toàn khỏi IV.`;
+            }
+
+            async function performEncryption({ newKey = false, newIv = false } = {}) {
+                encryptInlineError.classList.add("hidden");
+
+                if (!window.crypto || !window.crypto.subtle) {
+                    cryptoSupportAlert.classList.remove("hidden");
+                    return;
+                }
+
+                const ivLen = requiredIvBytes(state.encMode);
+                if (!state.keyBytes || newKey) {
+                    state.keyBytes = window.crypto.getRandomValues(new Uint8Array(32));
+                }
+                if (!state.ivBytes || newIv || state.ivBytes.length !== ivLen) {
+                    state.ivBytes = window.crypto.getRandomValues(new Uint8Array(ivLen));
+                }
+
+                let sourceBytes = null;
+                if (state.inputKind === "text") {
+                    const text = plaintextInput.value;
+                    if (!text) {
+                        syncEncryptControls();
+                        renderEncryptOutputs();
+                        encryptInlineError.textContent = "Vui lòng nhập nội dung văn bản gốc để tạo mã.";
+                        encryptInlineError.classList.remove("hidden");
+                        return;
+                    }
+                    sourceBytes = textEncoder.encode(text);
+                } else {
+                    if (!state.imageBytes) {
+                        syncEncryptControls();
+                        renderEncryptOutputs();
+                        return;
+                    }
+                    sourceBytes = state.imageBytes;
+                }
+
+                try {
+                    const cryptoKey = await window.crypto.subtle.importKey(
+                        "raw",
+                        state.keyBytes,
+                        { name: state.encMode, length: 256 },
+                        false,
+                        ["encrypt"]
+                    );
+
+                    const algo = state.encMode === "AES-GCM"
+                        ? { name: "AES-GCM", iv: state.ivBytes, tagLength: 128 }
+                        : { name: "AES-CBC", iv: state.ivBytes };
+
+                    const encryptedBuffer = await window.crypto.subtle.encrypt(algo, cryptoKey, sourceBytes);
+                    state.cipherBytes = new Uint8Array(encryptedBuffer);
+
+                    syncEncryptControls();
+                    renderEncryptOutputs();
+                } catch (err) {
+                    encryptInlineError.textContent = "Lỗi mã hóa: " + (err.message || "Không xác định");
+                    encryptInlineError.classList.remove("hidden");
+                }
+            }
+
+            // =========================================================================
+            // LOGIC GIẢI MÃ PHẦN 3 (TỰ NHẬN DIỆN VĂN BẢN HOẶC HÌNH ẢNH)
+            // =========================================================================
+
+            function setDecryptBufferedCipher(fullStr, sourceLabel) {
+                state.decBufferedCipher = fullStr;
+                if (fullStr.length > PREVIEW_CHAR_LIMIT) {
+                    decCipherInput.value = `${fullStr.slice(0, 4000)}\n\n... [Đã nạp sẵn ${fullStr.length.toLocaleString("vi-VN")} ký tự đầy đủ vào bộ nhớ] ...\n\n${fullStr.slice(-1500)}`;
+                } else {
+                    decCipherInput.value = fullStr;
+                }
+                decLoadedBufferText.textContent = `📎 ${sourceLabel} (${fullStr.length.toLocaleString("vi-VN")} ký tự đầy đủ)`;
+                decLoadedBufferBar.classList.remove("hidden");
+            }
+
+            function clearDecryptBufferedCipher() {
+                state.decBufferedCipher = null;
+                decLoadedBufferBar.classList.add("hidden");
+            }
+
+            function syncDecryptControls() {
+                const isGcm = state.decMode === "AES-GCM";
+                const isBase64 = state.decFormat === "base64";
+
+                decModeGcmBtn.classList.toggle("active", isGcm);
+                decModeCbcBtn.classList.toggle("active", !isGcm);
+
+                decFmtBase64Btn.classList.toggle("active", isBase64);
+                decFmtHexBtn.classList.toggle("active", !isBase64);
+
+                decKeyHint.textContent = isBase64
+                    ? "Cần 32 bytes (44 ký tự Base64)"
+                    : "Cần 32 bytes (64 ký tự Hex)";
+
+                if (isGcm) {
+                    decIvHint.textContent = isBase64
+                        ? "Cần 12 bytes (16 ký tự Base64)"
+                        : "Cần 12 bytes (24 ký tự Hex)";
+                } else {
+                    decIvHint.textContent = isBase64
+                        ? "Cần 16 bytes (24 ký tự Base64)"
+                        : "Cần 16 bytes (32 ký tự Hex)";
+                }
+            }
+
+            function resetDecryptResultVisuals() {
+                if (state.decImageDownload && state.decImageDownload.url) {
+                    URL.revokeObjectURL(state.decImageDownload.url);
+                }
+                state.decImageDownload = null;
+                copyDecryptedResultBtn.classList.add("hidden");
+                downloadDecryptedImageBtn.classList.add("hidden");
+                decryptedImageContainer.classList.add("hidden");
+                decryptResultContent.classList.add("hidden");
+            }
+
+            function renderDecryptError(statusTitle, bodyText) {
+                resetDecryptResultVisuals();
+                decryptResultBanner.classList.remove("hidden", "success", "error");
+                decryptResultBanner.classList.add("error");
+                decryptResultStatus.textContent = statusTitle;
+                decryptResultContent.textContent = bodyText;
+                decryptResultContent.classList.remove("hidden");
+            }
+
+            function renderDecryptTextSuccess(statusTitle, plainText) {
+                resetDecryptResultVisuals();
+                decryptResultBanner.classList.remove("hidden", "success", "error");
+                decryptResultBanner.classList.add("success");
+                decryptResultStatus.textContent = statusTitle;
+                decryptResultContent.textContent = plainText;
+                decryptResultContent.classList.remove("hidden");
+                copyDecryptedResultBtn.classList.remove("hidden");
+            }
+
+            function renderDecryptImageSuccess(decryptedBytes, imgMeta) {
+                resetDecryptResultVisuals();
+
+                const blob = new Blob([decryptedBytes], { type: imgMeta.mime });
+                const imgUrl = URL.createObjectURL(blob);
+                const filename = `anh-giai-ma-aes256.${imgMeta.ext}`;
+
+                state.decImageDownload = { url: imgUrl, filename };
+
+                decryptResultBanner.classList.remove("hidden", "success", "error");
+                decryptResultBanner.classList.add("success");
+                decryptResultStatus.textContent = "✅ Giải mã thành công • Đã khôi phục hình ảnh gốc";
+
+                decryptedImagePreview.src = imgUrl;
+                decImgFormatBadge.textContent = `Định dạng: ${imgMeta.label}`;
+                decImgSizeBadge.textContent = `Dung lượng: ${formatBytes(decryptedBytes.length)}`;
+                decImgDimBadge.textContent = "Đang đo kích thước...";
+
+                decryptedImagePreview.onload = () => {
+                    decImgDimBadge.textContent = `${decryptedImagePreview.naturalWidth} × ${decryptedImagePreview.naturalHeight} px`;
+                };
+
+                decryptedImageContainer.classList.remove("hidden");
+                downloadDecryptedImageBtn.classList.remove("hidden");
+            }
+
+            async function performDecryption() {
+                if (!window.crypto || !window.crypto.subtle) {
+                    cryptoSupportAlert.classList.remove("hidden");
+                    return;
+                }
+
+                const cipherStr = (state.decBufferedCipher !== null ? state.decBufferedCipher : decCipherInput.value).trim();
+                const keyStr = decKeyInput.value.trim();
+                const ivStr = decIvInput.value.trim();
+
+                if (!cipherStr || !keyStr || !ivStr) {
+                    renderDecryptError(
+                        "Thiếu thông tin giải mã",
+                        "Vui lòng nhập đầy đủ cả 3 ô: Chuỗi mật mã (Ciphertext), Key (256-bit) và IV."
+                    );
+                    return;
+                }
+
+                let cipherBytes, keyBytes, ivBytes;
+                try {
+                    cipherBytes = decodeBytes(cipherStr, state.decFormat, "Chuỗi mật mã (Ciphertext)");
+                    keyBytes = decodeBytes(keyStr, state.decFormat, "Key (256-bit)");
+                    ivBytes = decodeBytes(ivStr, state.decFormat, "IV");
+                } catch (parseErr) {
+                    renderDecryptError("Sai định dạng đầu vào", parseErr.message);
+                    return;
+                }
+
+                if (keyBytes.length !== 32) {
+                    renderDecryptError(
+                        "Sai Key (Độ dài không hợp lệ)",
+                        `AES-256 yêu cầu Key dài đúng 32 bytes (256-bit), nhưng Key bạn nhập có ${keyBytes.length} bytes.`
+                    );
+                    return;
+                }
+
+                const expectedIvLen = requiredIvBytes(state.decMode);
+                if (ivBytes.length !== expectedIvLen) {
+                    const suggestion = state.decMode === "AES-GCM"
+                        ? "AES-256-GCM yêu cầu IV 12 bytes (nếu IV của bạn dài 16 bytes, hãy chọn Mode AES-256-CBC)."
+                        : "AES-256-CBC yêu cầu IV 16 bytes (nếu IV của bạn dài 12 bytes, hãy chọn Mode AES-256-GCM).";
+                    renderDecryptError(
+                        `Sai IV cho chế độ ${modeDisplayName(state.decMode)}`,
+                        `IV bạn nhập có ${ivBytes.length} bytes. ${suggestion}`
+                    );
+                    return;
+                }
+
+                if (state.decMode === "AES-GCM" && cipherBytes.length < 16) {
+                    renderDecryptError(
+                        "Dữ liệu bị thay đổi hoặc không hợp lệ",
+                        "Ciphertext AES-256-GCM phải có ít nhất 16 bytes chứa thẻ xác thực (Auth Tag)."
+                    );
+                    return;
+                }
+
+                if (state.decMode === "AES-CBC" && (cipherBytes.length === 0 || cipherBytes.length % 16 !== 0)) {
+                    renderDecryptError(
+                        "Dữ liệu bị thay đổi hoặc sai Mode",
+                        `Ciphertext AES-256-CBC phải có độ dài là bội số của 16 bytes (hiện tại là ${cipherBytes.length} bytes).`
+                    );
+                    return;
+                }
+
+                try {
+                    const cryptoKey = await window.crypto.subtle.importKey(
+                        "raw",
+                        keyBytes,
+                        { name: state.decMode, length: 256 },
+                        false,
+                        ["decrypt"]
+                    );
+
+                    const algo = state.decMode === "AES-GCM"
+                        ? { name: "AES-GCM", iv: ivBytes, tagLength: 128 }
+                        : { name: "AES-CBC", iv: ivBytes };
+
+                    const decryptedBuf = await window.crypto.subtle.decrypt(algo, cryptoKey, cipherBytes);
+                    const decryptedBytes = new Uint8Array(decryptedBuf);
+
+                    // 1. Kiểm tra Magic Bytes xem dữ liệu sau giải mã có phải hình ảnh không
+                    const detectedImage = detectImageMagicBytes(decryptedBytes);
+                    if (detectedImage) {
+                        renderDecryptImageSuccess(decryptedBytes, detectedImage);
+                        return;
+                    }
+
+                    // 2. Nếu không phải ảnh, giải mã thành văn bản UTF-8
+                    let plainText = "";
+                    try {
+                        plainText = textDecoder.decode(decryptedBytes);
+                    } catch (utfErr) {
+                        renderDecryptError(
+                            "Thất bại: Dữ liệu không phải văn bản UTF-8 hoặc hình ảnh hợp lệ",
+                            "Quá trình giải mã trả về chuỗi byte không khớp định dạng ảnh hay văn bản chuẩn (có thể do sai Key, sai IV hoặc sai Mode)."
+                        );
+                        return;
+                    }
+
+                    if (/[\x00-\x08\x0B\x0C\x0E-\x1F\uFFFD]/.test(plainText)) {
+                        renderDecryptError(
+                            "Sai IV (Vector khởi tạo không khớp)",
+                            "Nội dung giải mã ở khối đầu tiên bị biến dạng ký tự rác do IV không trùng khớp với lúc mã hóa."
+                        );
+                        return;
+                    }
+
+                    const authNote = state.decMode === "AES-GCM"
+                        ? "✅ Giải mã thành công • Đã xác thực toàn vẹn AES-256-GCM"
+                        : "✅ Giải mã thành công • Đã giải mã chuẩn AES-256-CBC";
+
+                    renderDecryptTextSuccess(authNote, plainText);
+                } catch (err) {
+                    renderDecryptError(
+                        "Thất bại: Sai Key, sai IV hoặc dữ liệu bị thay đổi",
+                        state.decMode === "AES-GCM"
+                            ? "Xác thực GCM không khớp: Chìa khóa (Key) sai, IV sai, sai Mode hoặc chuỗi mật mã đã bị chỉnh sửa."
+                            : "Không thể giải mã AES-256-CBC (lỗi đệm PKCS#7 hoặc sai UTF-8). Vui lòng kiểm tra lại Key, IV và Mode."
+                    );
+                }
+            }
+
+            // =========================================================================
+            // SỰ KIỆN TƯƠNG TÁC NGƯỜI DÙNG
+            // =========================================================================
+
+            // Chuyển Tab Văn bản / Hình ảnh
+            tabTextMode.addEventListener("click", () => switchInputTab("text"));
+            tabImageMode.addEventListener("click", () => switchInputTab("image"));
+
+            // Gõ văn bản gốc -> cập nhật tự động ngay lập tức
+            plaintextInput.addEventListener("input", () => {
+                updateSourceByteBadge();
+                if (plaintextInput.value.length > 0) {
+                    performEncryption({ newKey: false, newIv: false });
+                } else {
+                    state.cipherBytes = null;
+                    cipherTruncateNotice.classList.add("hidden");
+                    cipherOutputBox.textContent = "";
+                    cipherSizeBadge.textContent = "0 bytes";
+                }
+            });
+
+            // Khôi phục câu mẫu
+            restoreSampleBtn.addEventListener("click", () => {
+                plaintextInput.value = SAMPLE_TEXT;
+                updateSourceByteBadge();
+                performEncryption({ newKey: false, newIv: false });
+            });
+
+            // Sự kiện chọn / kéo thả / xóa ảnh ở Tab Hình ảnh
+            imageDropZone.addEventListener("click", () => imageFileInput.click());
+            imageDropZone.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    imageFileInput.click();
+                }
+            });
+            changeImageBtn.addEventListener("click", () => imageFileInput.click());
+            removeImageBtn.addEventListener("click", clearSelectedImage);
+
+            imageFileInput.addEventListener("change", (e) => {
+                if (e.target.files && e.target.files[0]) {
+                    handleImageFile(e.target.files[0]);
+                }
+            });
+
+            ["dragenter", "dragover"].forEach((evtName) => {
+                imageDropZone.addEventListener(evtName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    imageDropZone.classList.add("drag-over");
+                });
+            });
+
+            ["dragleave", "drop"].forEach((evtName) => {
+                imageDropZone.addEventListener(evtName, (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    imageDropZone.classList.remove("drag-over");
+                });
+            });
+
+            imageDropZone.addEventListener("drop", (e) => {
+                const files = e.dataTransfer && e.dataTransfer.files;
+                if (files && files[0]) {
+                    handleImageFile(files[0]);
+                }
+            });
+
+            // Hỗ trợ dán ảnh trực tiếp từ Clipboard (Ctrl+V)
+            document.addEventListener("paste", (e) => {
+                const items = e.clipboardData && e.clipboardData.items;
+                if (!items) return;
+
+                for (let i = 0; i < items.length; i++) {
+                    if (items[i].type && items[i].type.startsWith("image/")) {
+                        const file = items[i].getAsFile();
+                        if (file) {
+                            e.preventDefault();
+                            handleImageFile(file);
+                            break;
+                        }
+                    }
+                }
+            });
+
+            // Chuyển định dạng Base64 / Hex (Phần 1 & 2)
+            [encFmtBase64Btn, encFmtHexBtn].forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const fmt = btn.getAttribute("data-enc-fmt");
+                    if (fmt && fmt !== state.encFormat) {
+                        state.encFormat = fmt;
+                        syncEncryptControls();
+                        renderEncryptOutputs();
+                    }
+                });
+            });
+
+            // Nút "Tạo mã mới" (sinh lại cả Key + IV ngẫu nhiên và mã hóa ngay)
+            generateNewCodeBtn.addEventListener("click", () => {
+                regenAllSvg.classList.remove("spin-once");
+                void regenAllSvg.offsetWidth;
+                regenAllSvg.classList.add("spin-once");
+                performEncryption({ newKey: true, newIv: true });
+            });
+
+            // Nút "Sao chép mã" (luôn dùng 100% chuỗi đầy đủ trong bộ nhớ)
+            copyCipherBtn.addEventListener("click", () => {
+                if (!state.cipherBytes) return;
+                const fullCipher = encodeBytes(state.cipherBytes, state.encFormat);
+                copyTextWithFeedback(fullCipher, copyCipherBtn, "Đã sao chép mã!");
+            });
+
+            // Nút "Tải file mã (.txt)"
+            downloadCipherTxtBtn.addEventListener("click", () => {
+                if (!state.cipherBytes) return;
+                const fullCipher = encodeBytes(state.cipherBytes, state.encFormat);
+                const prefix = state.inputKind === "image" ? "ma-hinh-anh-aes256" : "ma-van-ban-aes256";
+                const blob = new Blob([fullCipher], { type: "text/plain;charset=utf-8" });
+                triggerBlobDownload(blob, `${prefix}-${state.encFormat}.txt`);
+            });
+
+            // Phần 2: Đổi riêng Key
+            changeKeyBtn.addEventListener("click", () => {
+                performEncryption({ newKey: true, newIv: false });
+            });
+
+            // Phần 2: Đổi Mode (AES-256-GCM <-> AES-256-CBC)
+            [encModeGcmBtn, encModeCbcBtn].forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const mode = btn.getAttribute("data-enc-mode");
+                    if (mode && mode !== state.encMode) {
+                        state.encMode = mode;
+                        performEncryption({ newKey: false, newIv: true });
+                    }
+                });
+            });
+
+            // Phần 2: Đổi riêng IV
+            changeIvBtn.addEventListener("click", () => {
+                performEncryption({ newKey: false, newIv: true });
+            });
+
+            // Nút "Sao chép Mode"
+            copyModeBtn.addEventListener("click", () => {
+                copyTextWithFeedback(modeDisplayName(state.encMode), copyModeBtn, "Đã sao chép Mode!");
+            });
+
+            // Nút "Sao chép trọn bộ (Mã + Key + Mode + IV)"
+            copyFullBundleBtn.addEventListener("click", () => {
+                if (!state.cipherBytes || !state.keyBytes || !state.ivBytes) return;
+
+                const fmtName = state.encFormat === "hex" ? "Hex" : "Base64";
+                const bundle = [
+                    `=== DỮ LIỆU MÃ HÓA ${modeDisplayName(state.encMode)} (${fmtName}) ===`,
+                    `Chuỗi mật mã (Ciphertext): ${encodeBytes(state.cipherBytes, state.encFormat)}`,
+                    `Key (256-bit): ${encodeBytes(state.keyBytes, state.encFormat)}`,
+                    `Mode: ${modeDisplayName(state.encMode)}`,
+                    `IV (${state.ivBytes.length} bytes): ${encodeBytes(state.ivBytes, state.encFormat)}`
+                ].join("\n");
+
+                copyTextWithFeedback(bundle, copyFullBundleBtn, "Đã sao chép trọn bộ!");
+            });
+
+            // Các nút sao chép Key và IV
+            document.querySelectorAll("[data-copy-el]").forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const targetId = btn.getAttribute("data-copy-el");
+                    const targetEl = document.getElementById(targetId);
+                    if (targetEl) {
+                        copyTextWithFeedback(targetEl.textContent, btn, "Đã sao chép!");
+                    }
+                });
+            });
+
+            // Phần 3: Nút "⬇️ Lấy dữ liệu từ trên xuống để kiểm tra"
+            pullDownBtn.addEventListener("click", () => {
+                if (!state.cipherBytes || !state.keyBytes || !state.ivBytes) return;
+
+                state.decMode = state.encMode;
+                state.decFormat = state.encFormat;
+                syncDecryptControls();
+
+                const fullCipher = encodeBytes(state.cipherBytes, state.encFormat);
+                if (fullCipher.length > PREVIEW_CHAR_LIMIT) {
+                    setDecryptBufferedCipher(fullCipher, "Đã lấy dữ liệu ảnh từ trên xuống");
+                } else {
+                    clearDecryptBufferedCipher();
+                    decCipherInput.value = fullCipher;
+                }
+
+                decKeyInput.value = encodeBytes(state.keyBytes, state.encFormat);
+                decIvInput.value = encodeBytes(state.ivBytes, state.encFormat);
+
+                decryptResultBanner.classList.add("hidden");
+
+                if (!pullDownBtn._origHtml) {
+                    pullDownBtn._origHtml = pullDownBtn.innerHTML;
+                }
+                pullDownBtn.innerHTML = `
+                    <svg class="icon-svg" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                    <span>Đã điền dữ liệu!</span>
+                `;
+                pullDownBtn.classList.add("btn-copied");
+                clearTimeout(pullDownBtn._timer);
+                pullDownBtn._timer = setTimeout(() => {
+                    pullDownBtn.innerHTML = pullDownBtn._origHtml;
+                    pullDownBtn.classList.remove("btn-copied");
+                }, 1500);
+            });
+
+            // Phần 3: Nạp file mã (.txt) từ máy
+            uploadCipherTxtBtn.addEventListener("click", () => cipherTxtFileInput.click());
+            cipherTxtFileInput.addEventListener("change", async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+                try {
+                    const content = (await file.text()).trim();
+                    if (!content) {
+                        renderDecryptError("File trống", "File .txt bạn chọn không chứa dữ liệu mã hóa.");
+                        return;
+                    }
+                    setDecryptBufferedCipher(content, `Đã nạp file "${file.name}"`);
+                    decryptResultBanner.classList.add("hidden");
+                } catch (err) {
+                    renderDecryptError("Lỗi đọc file", "Không thể đọc nội dung file .txt: " + (err.message || ""));
+                } finally {
+                    cipherTxtFileInput.value = "";
+                }
+            });
+
+            clearDecBufferBtn.addEventListener("click", () => {
+                clearDecryptBufferedCipher();
+                decCipherInput.value = "";
+            });
+
+            decCipherInput.addEventListener("input", () => {
+                if (state.decBufferedCipher !== null) {
+                    clearDecryptBufferedCipher();
+                }
+            });
+
+            // Phần 3: Chọn Mode giải mã
+            [decModeGcmBtn, decModeCbcBtn].forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const mode = btn.getAttribute("data-dec-mode");
+                    if (mode) {
+                        state.decMode = mode;
+                        syncDecryptControls();
+                    }
+                });
+            });
+
+            // Phần 3: Chọn Định dạng đầu vào giải mã
+            [decFmtBase64Btn, decFmtHexBtn].forEach((btn) => {
+                btn.addEventListener("click", () => {
+                    const fmt = btn.getAttribute("data-dec-fmt");
+                    if (fmt) {
+                        state.decFormat = fmt;
+                        syncDecryptControls();
+                    }
+                });
+            });
+
+            // Phần 3: Nút "🔓 GIẢI MÃ NGAY"
+            decryptNowBtn.addEventListener("click", performDecryption);
+
+            // Phần 3: Tải hình ảnh đã giải mã về máy
+            downloadDecryptedImageBtn.addEventListener("click", () => {
+                if (!state.decImageDownload) return;
+                const a = document.createElement("a");
+                a.href = state.decImageDownload.url;
+                a.download = state.decImageDownload.filename;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+
+            // Phần 3: Nút "Xóa ô nhập"
+            clearDecInputsBtn.addEventListener("click", () => {
+                clearDecryptBufferedCipher();
+                decCipherInput.value = "";
+                decKeyInput.value = "";
+                decIvInput.value = "";
+                resetDecryptResultVisuals();
+                decryptResultBanner.classList.add("hidden");
+            });
+
+            // Khởi tạo ngay khi mở trang
+            window.addEventListener("DOMContentLoaded", () => {
+                updateSourceByteBadge();
+                syncDecryptControls();
+                performEncryption({ newKey: true, newIv: true });
+            });
+        })();
+    </script>
+</body>
+</html>
